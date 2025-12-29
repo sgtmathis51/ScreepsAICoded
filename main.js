@@ -4,6 +4,7 @@ var utils_screeps = registry.utils;
 var spawns_manager_screeps = require('spawns.manager.screeps');
 var room_manager_screeps = require('room.manager.screeps');
 var towers_manager_screeps = registry.towersManager;
+var pixel_manager_screeps = require('pixel.manager.screeps');
 // Load role modules locally to avoid circular requires (roles may require registry)
 var roles = {
     harvester: require('role.harvester.screeps'),
@@ -17,6 +18,9 @@ var roles = {
 module.exports.loop = function () {
     // Housekeeping
     utils_screeps.cleanupMemory();
+
+    // Pixel manager — use spare CPU bucket to generate Pixels
+    pixel_manager_screeps.run();
 
     // Spawn management
     spawns_manager_screeps.runAllSpawns();
