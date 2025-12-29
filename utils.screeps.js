@@ -51,7 +51,7 @@ module.exports = {
         return fromPos.roomName + ':' + fromPos.x + ',' + fromPos.y + '->' + toPos.x + ',' + toPos.y;
     },
 
-    // Return a serialized path string for same-room paths, cached in Memory.pathCache
+    // Return a cached path as an array of {x,y} objects for same-room paths
     getCachedPath: function (fromPos, toPos, opts) {
         opts = opts || {};
         var ttl = opts.ttl || 20;
@@ -67,9 +67,13 @@ module.exports = {
         var range = opts.range || 1;
         var res = PathFinder.search(fromPos, { pos: toPos, range: range }, { maxOps: opts.maxOps || 2000 });
         if (!res || !res.path || res.path.length === 0) return null;
-        var serialized = room.serializePath(res.path);
-        Memory.pathCache[key] = { path: serialized, expire: Game.time + ttl };
-        return serialized;
+        // store as compact x,y array to avoid relying on room.serializePath
+        var compact = [];
+        for (var i = 0; i < res.path.length; i++) {
+            compact.push({ x: res.path[i].x, y: res.path[i].y });
+        }
+        Memory.pathCache[key] = { path: compact, expire: Game.time + ttl };
+        return compact;
     },
 
     // Move helper that uses cached serialized paths when available
@@ -82,11 +86,15 @@ module.exports = {
         var range = opts.range || 1;
         if (creep.pos.inRangeTo(toPos.x, toPos.y, range)) return;
 
-        var path = this.getCachedPath(creep.pos, toPos, opts);
-        if (path) {
-            var res = creep.moveByPath(path);
+        var compactPath = this.getCachedPath(creep.pos, toPos, opts);
+        if (compactPath) {
+            // reconstruct RoomPosition array for moveByPath
+            var positions = [];
+            for (var i = 0; i < compactPath.length; i++) {
+                positions.push(new RoomPosition(compactPath[i].x, compactPath[i].y, creep.pos.roomName));
+            }
+            var res = creep.moveByPath(positions);
             if (res === ERR_NOT_FOUND || res === ERR_INVALID_TARGET) {
-                // invalidate cache and fallback
                 delete Memory.pathCache[this._getPathKey(creep.pos, toPos)];
                 creep.moveTo(toPos, opts.moveToOpts || { reusePath: 5 });
             }

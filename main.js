@@ -4,6 +4,15 @@ var utils_screeps = registry.utils;
 var spawns_manager_screeps = require('spawns.manager.screeps');
 var room_manager_screeps = require('room.manager.screeps');
 var towers_manager_screeps = registry.towersManager;
+// Load role modules locally to avoid circular requires (roles may require registry)
+var roles = {
+    harvester: require('role.harvester.screeps'),
+    upgrader: require('role.upgrader.screeps'),
+    builder: require('role.builder.screeps'),
+    repairer: require('role.repairer.screeps'),
+    miner: require('role.miner.screeps'),
+    hauler: require('role.hauler.screeps')
+};
 
 module.exports.loop = function () {
     // Housekeeping
@@ -25,7 +34,7 @@ module.exports.loop = function () {
         var creep = Game.creeps[name];
         if (!creep || !creep.memory || !creep.memory.role) continue;
         try {
-            var roleModule = registry.roles[creep.memory.role];
+            var roleModule = roles[creep.memory.role];
             if (roleModule && roleModule.run) roleModule.run(creep);
         } catch (err) {
             console.log('Role runtime error:', creep.memory.role, err.stack || err);
